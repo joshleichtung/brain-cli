@@ -6,34 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 
-
-@dataclass
-class Turn:
-    """A single conversation turn."""
-
-    role: str  # 'user' or 'assistant'
-    content: str
-    agent: str
-    timestamp: datetime
-    tokens: int
-    cost: float
-
-    def to_dict(self) -> dict:
-        """Convert to dictionary for serialization."""
-        return {
-            'role': self.role,
-            'content': self.content,
-            'agent': self.agent,
-            'timestamp': self.timestamp.isoformat(),
-            'tokens': self.tokens,
-            'cost': self.cost
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict) -> 'Turn':
-        """Create from dictionary."""
-        data['timestamp'] = datetime.fromisoformat(data['timestamp'])
-        return cls(**data)
+from .agents.base import Turn
 
 
 @dataclass
