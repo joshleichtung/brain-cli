@@ -27,6 +27,7 @@ from rich.text import Text
 from .orchestrator_v2 import AgnosticOrchestrator
 from .session import SessionRegistry
 from .agents.base import RoutingPlan
+from .observability.subscribers import register_default_subscribers
 
 
 class BrainREPL:
@@ -51,6 +52,9 @@ class BrainREPL:
         self.console = Console()
         self.workspace_path = workspace_path or os.getcwd()
         self.primary_agent = primary_agent
+
+        # Register observability subscribers
+        register_default_subscribers()
 
         # Agent configurations
         self.agent_configs = {

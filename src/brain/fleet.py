@@ -9,6 +9,7 @@ from dataclasses import dataclass, asdict
 from enum import Enum
 
 from .agents.base import BaseAgent, AgentResult
+from .observability import get_hooks
 
 
 class AgentStatus(Enum):
@@ -171,6 +172,17 @@ class AgentFleetManager:
 
         print(f"🚀 Spawned agent: {agent_id} (project: {project})")
 
+        # Emit hook event
+        hooks = get_hooks()
+        asyncio.create_task(hooks.agent_spawned(
+            agent_id=agent_id,
+            agent_name=config['name'],
+            task=task,
+            workspace_path=config.get('workspace_path', ''),
+            project=project,
+            metadata={'worktree_path': worktree_path}
+        ))
+
         return agent_id
 
     async def _run_agent(
@@ -192,6 +204,16 @@ class AgentFleetManager:
             instance.status = AgentStatus.RUNNING
             self._save_instance(instance)
 
+            # Emit hook event
+            hooks = get_hooks()
+            await hooks.agent_started(
+                agent_id=agent_id,
+                agent_name=instance.agent_name,
+                task=task,
+                workspace_path=config.get('workspace_path', ''),
+                project=instance.project
+            )
+
             # Create agent
             agent: BaseAgent = agent_class(config)
 
@@ -209,6 +231,20 @@ class AgentFleetManager:
             print(f"   Response: {result.response[:100]}...")
             print(f"   Tokens: {result.tokens_used} | Cost: ${result.cost:.4f}")
 
+            # Emit hook event
+            time_taken = (instance.completion_time - instance.spawn_time).total_seconds()
+            await hooks.agent_completed(
+                agent_id=agent_id,
+                agent_name=instance.agent_name,
+                task=task,
+                workspace_path=config.get('workspace_path', ''),
+                project=instance.project,
+                tokens_used=result.tokens_used,
+                cost=result.cost,
+                time_taken=time_taken,
+                response=result.response
+            )
+
         except Exception as e:
             # Handle failure
             instance.status = AgentStatus.FAILED
@@ -219,6 +255,16 @@ class AgentFleetManager:
 
             print(f"❌ Agent failed: {agent_id}")
             print(f"   Error: {e}")
+
+            # Emit hook event
+            await hooks.agent_failed(
+                agent_id=agent_id,
+                agent_name=instance.agent_name,
+                task=task,
+                workspace_path=config.get('workspace_path', ''),
+                project=instance.project,
+                error_message=str(e)
+            )
 
         finally:
             # Process queue if any tasks waiting
