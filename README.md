@@ -18,7 +18,46 @@ Brain CLI is a terminal-based orchestrator that coordinates multiple AI agents (
 
 ## Project Status
 
-🚧 **Phase 1: MVP** - In Development
+### Completed (Week 1-5)
+
+✅ **Week 1**: Infrastructure
+- Agent fleet management with on-demand spawning
+- Git worktree isolation for parallel agent work
+- Orchestrator v2 with async execution
+- All tests passing (19/19)
+
+✅ **Week 2**: Enhanced REPL
+- Rich terminal UI with interactive prompts
+- User confirmation flow for multi-agent operations
+- Agent selection interface
+
+✅ **Week 3**: Observability
+- Event hook system (8 lifecycle event types)
+- SQLite event storage
+- FastAPI observability service with WebSocket
+- Real-time event broadcasting
+
+✅ **Week 4**: Dashboard
+- React + TypeScript + Tailwind v3 dashboard
+- WebSocket-based live event monitoring
+- Agent lifecycle visualization
+
+✅ **Week 5**: Analytics
+- Jira/GitHub CSV parsers with flexible column matching
+- Pattern detection: K-means clustering, LDA topic modeling
+- NLP analysis: Named entity recognition, sentiment analysis
+- Analytics API endpoints integrated with FastAPI
+- Dashboard analytics UI with upload and visualization
+- Test suite: 6/6 passing
+
+### Tags
+- `v0.1.0-foundation` - Week 1: Infrastructure
+- `v0.2.0-repl` - Week 2: Enhanced REPL
+- `v0.3.0-observability` - Week 3: Observability system
+- `v0.4.0-dashboard` - Week 4: React dashboard
+- `v0.5.0-analytics-core` - Week 5 M1: Analytics module
+- `v0.5.1-analytics-tested` - Week 5 M2: Analytics tests
+- `v0.5.2-analytics-ui` - Week 5 M3: Analytics dashboard UI
 
 See `docs/` for complete planning documentation.
 
