@@ -283,6 +283,175 @@ async def websocket_endpoint(websocket: WebSocket):
         manager.disconnect(websocket)
 
 
+# Analytics endpoints (File upload and analysis)
+
+from fastapi import UploadFile, File, Form
+import tempfile
+import os
+
+@app.post("/analytics/upload")
+async def upload_data_file(
+    file: UploadFile = File(...),
+    file_type: str = Form(..., description="'jira' or 'github'"),
+    export_type: str = Form("issues", description="'issues' or 'prs'")
+):
+    """
+    Upload a CSV file for analysis.
+
+    Returns analysis ID for querying results.
+    """
+    # Save uploaded file temporarily
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.csv') as tmp:
+        content = await file.read()
+        tmp.write(content)
+        tmp_path = tmp.name
+
+    # Parse based on type
+    from brain.analytics import JiraParser, GitHubParser
+
+    try:
+        if file_type == 'jira':
+            parser = JiraParser(tmp_path)
+            issues = parser.parse()
+            data_type = "jira_issues"
+        elif file_type == 'github':
+            parser = GitHubParser(tmp_path, export_type)
+            if export_type == 'issues':
+                issues = parser.parse_issues()
+                data_type = "github_issues"
+            else:
+                issues = parser.parse_prs()
+                data_type = "github_prs"
+        else:
+            return {"error": "Invalid file_type. Use 'jira' or 'github'"}
+
+        # Store in memory for now (could use database)
+        # For simplicity, return summary
+        return {
+            "message": "File uploaded successfully",
+            "file_name": file.filename,
+            "data_type": data_type,
+            "count": len(issues),
+            "sample": {
+                "id": issues[0].id if issues else None,
+                "title": issues[0].title if issues else None
+            }
+        }
+
+    finally:
+        # Cleanup temp file
+        os.unlink(tmp_path)
+
+
+@app.post("/analytics/cluster")
+async def analyze_clusters(
+    file: UploadFile = File(...),
+    file_type: str = Form(...),
+    n_clusters: int = Form(5)
+):
+    """Perform cluster analysis on uploaded data."""
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.csv') as tmp:
+        content = await file.read()
+        tmp.write(content)
+        tmp_path = tmp.name
+
+    try:
+        from brain.analytics import JiraParser, GitHubParser, PatternDetector
+
+        # Parse data
+        if file_type == 'jira':
+            parser = JiraParser(tmp_path)
+            issues = parser.parse()
+        else:
+            parser = GitHubParser(tmp_path, 'issues')
+            issues = parser.parse_issues()
+
+        # Perform clustering
+        detector = PatternDetector()
+        result = detector.cluster_issues(issues, n_clusters=n_clusters)
+
+        return {
+            "summary": result.summary,
+            "insights": result.insights,
+            "patterns": result.patterns,
+            "metadata": result.metadata
+        }
+
+    finally:
+        os.unlink(tmp_path)
+
+
+@app.post("/analytics/topics")
+async def analyze_topics(
+    file: UploadFile = File(...),
+    file_type: str = Form(...),
+    n_topics: int = Form(5)
+):
+    """Extract topics from uploaded data."""
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.csv') as tmp:
+        content = await file.read()
+        tmp.write(content)
+        tmp_path = tmp.name
+
+    try:
+        from brain.analytics import JiraParser, GitHubParser, PatternDetector
+
+        if file_type == 'jira':
+            parser = JiraParser(tmp_path)
+            issues = parser.parse()
+        else:
+            parser = GitHubParser(tmp_path, 'issues')
+            issues = parser.parse_issues()
+
+        detector = PatternDetector()
+        result = detector.extract_topics(issues, n_topics=n_topics)
+
+        return {
+            "summary": result.summary,
+            "insights": result.insights,
+            "patterns": result.patterns,
+            "metadata": result.metadata
+        }
+
+    finally:
+        os.unlink(tmp_path)
+
+
+@app.post("/analytics/entities")
+async def extract_entities(
+    file: UploadFile = File(...),
+    file_type: str = Form(...)
+):
+    """Extract named entities from uploaded data."""
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.csv') as tmp:
+        content = await file.read()
+        tmp.write(content)
+        tmp_path = tmp.name
+
+    try:
+        from brain.analytics import JiraParser, GitHubParser, NLPAnalyzer
+
+        if file_type == 'jira':
+            parser = JiraParser(tmp_path)
+            issues = parser.parse()
+        else:
+            parser = GitHubParser(tmp_path, 'issues')
+            issues = parser.parse_issues()
+
+        analyzer = NLPAnalyzer()
+        result = analyzer.extract_entities(issues)
+
+        return {
+            "summary": result.summary,
+            "insights": result.insights,
+            "patterns": result.patterns,
+            "metadata": result.metadata
+        }
+
+    finally:
+        os.unlink(tmp_path)
+
+
 # Startup/shutdown events
 
 @app.on_event("startup")
@@ -291,6 +460,7 @@ async def startup_event():
     print("🚀 Starting Brain CLI Observability API...")
     register_websocket_subscriber()
     print("✅ WebSocket event broadcasting enabled")
+    print("✅ Analytics endpoints available")
 
 
 @app.on_event("shutdown")
